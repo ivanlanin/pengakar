@@ -20,7 +20,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 
 $pengakar = new pengakar;
 
-$q = $_POST['q'];
+$q = stripslashes($_POST['q']); // Unix server. Suhosin?
 
 $ret .= '<form action="./" method="post" style="margin-bottom: 20px;">';
 $ret .= '<textarea id="q" name="q" style="width:90%;" rows="10">' . $q . '</textarea>';
@@ -80,9 +80,17 @@ class pengakar
 	function __construct()
 	{
 		$dict = file_get_contents('./kamus.txt');
-		$this->dict = explode("\n", $dict);
-		foreach ($this->dict as &$entry)
+		$tmp = explode("\n", $dict);
+		// create associative array
+		foreach ($tmp as $entry)
+		{
 			$entry = strtolower($entry);
+			$attrib = explode("\t", $entry);
+			$class = $attrib[0];
+			$lemma = $attrib[1];
+			$key = str_replace(' ', '', $lemma);
+			$this->dict[$key] = array('class' => $class, 'lemma' => $lemma);
+		}
 	}
 
 	/**
@@ -124,20 +132,26 @@ class pengakar
 				{
 					$i++;
 					$affixes = $attrib['affixes'];
-					$url = sprintf($url_template, $lemma);
-					$lemma_url = sprintf('<a href="%s" target="kateglo">%s</a>', $url, $lemma);
+					$url = sprintf($url_template, $attrib['lemma']);
+					$lemma_url = sprintf('<a href="%s" target="kateglo">%s</a>', $url, $attrib['lemma']);
 					$components .= $components ? '; ' : '';
 					if ($key == $lemma && $root_count == 1) // is baseword
 						$components .= $lemma_url . $instances;
 					else
 					{
-						if ($i == 1) $components .= $key . $instances . ': ';
-						if ($root_count > 1) $components .= "({$i}) ";
+						if ($root_count > 1) // multiroot
+						{
+							if ($i == 1)
+								$components .= $key . $instances . ': ';
+							$components .= "({$i}) ";
+						}
 						if (is_array($attrib['prefixes']))
 							$components .= implode('', $attrib['prefixes']);
 						$components .= $lemma_url;
 						if (is_array($attrib['suffixes']))
 							$components .= implode('', $attrib['suffixes']);
+						if ($root_count == 1) // single root
+							$components .= $instances;
 					}
 				}
 				$found .= sprintf('<li>%s</li>', $components);
@@ -178,10 +192,10 @@ class pengakar
 	 */
 	function stem_word($word)
 	{
-		// Preprocess: Original word
+		// Preprocess: Create empty affix if original word is in lexicon
 		$word = trim($word);
 		$roots = array($word => '');
-		if (in_array($word, $this->dict))
+		if (array_key_exists($word, $this->dict))
 			$roots[$word]['affixes'] = array();
 
 		// Process: Find suffixes, pronoun prefix, and other prefix (3 times, Asian)
@@ -193,10 +207,11 @@ class pengakar
 		$i = 0;
 		foreach ($roots as $lemma => $attrib)
 		{
-			if (!in_array($lemma, $this->dict))
+			if (!array_key_exists($lemma, $this->dict))
 				unset($roots[$lemma]);
 			else
 			{
+				$attrib['lemma'] = $this->dict[$lemma]['lemma'];
 				// Divide affixes into suffixes and prefixes
 				foreach ($attrib['affixes'] as $affix)
 				{
