@@ -22,12 +22,16 @@ $pengakar = new pengakar;
 
 $q = $_POST['q'];
 
-$ret .= '<form action="./" method="post">';
+$ret .= '<form action="./" method="post" style="margin-bottom: 20px;">';
 $ret .= '<textarea id="q" name="q" style="width:90%;" rows="10">' . $q . '</textarea>';
 $ret .= '<br />';
 $ret .= '<input type="submit" value="Proses" />';
 $ret .= '</form>';
-if ($q) $ret .= $pengakar->stem($q);
+if ($q)
+{
+	$ret .= '<h3>Daftar kata</h3>';
+	$ret .= $pengakar->get_html($q);
+}
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
 	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -35,13 +39,26 @@ if ($q) $ret .= $pengakar->stem($q);
 <head>
 <title>Pengakar</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<style>a { text-decoration: none; }</style>
+<style>
+a { text-decoration: none; }
+.instance { color: #666; font-style: italic; font-size: 80%; }
+</style>
 <body>
 <h2>Pengakar</h2>
-<p>Pengakar (<em><a href="http://en.wikipedia.org/wiki/Stemming">stemmer</a></em>) adalah program pencari akar kata bahasa Indonesia. Program ini dibuat dengan menyempurnakan beberapa algoritme yang diperoleh dari berbagai sumber, terutama artikel "<a href="http://dl.acm.org/citation.cfm?id=1082195">Stemming Indonesian</a>" (Asian, 2005). Tentu saja program ini masih terus disempurnakan dan, karena itu, mohon bantuan untuk melaporkan kesalahan kepada <a href="http://twitter.com/ivanlanin">@ivanlanin</a>. Terima kasih.</p>
-<p>Silakan masukkan kata (bisa dipisahkan dengan spasi, koma, atau baris baru) atau salin rekatkan teks pada kotak di bawah ini. Klik "Proses" dan pengakar akan berupaya mencari akar kata tersebut.</p>
+<p>Pengakar (<em><a href="http://en.wikipedia.org/wiki/Stemming">stemmer</a></em>)
+adalah program pencari akar kata bahasa Indonesia. Program ini dibuat dengan
+menyempurnakan beberapa algoritme yang diperoleh dari berbagai sumber, terutama
+artikel "<a href="http://dl.acm.org/citation.cfm?id=1082195">Stemming Indonesian</a>"
+(Asian, 2005). Tentu saja program ini masih terus disempurnakan dan, karena itu,
+mohon bantuan untuk melaporkan kesalahan kepada
+<a href="http://twitter.com/ivanlanin">@ivanlanin</a>. Terima kasih.</p>
+<p>Silakan masukkan kata (bisa dipisahkan dengan spasi, koma, atau baris baru)
+atau salin rekatkan teks pada kotak di bawah ini. Klik "Proses" dan pengakar
+akan berupaya mencari akar kata tersebut. Warna <span style="color:#f00">merah</span>
+berarti kata tersebut tidak ditemukan di dalam leksikon dan diletakkan paling atas
+dalam daftar. Daftar kata diurutkan berdasarkan jumlah kemunculan.</p>
 <?php echo($ret); ?>
-<hr />
+<hr style="margin-top: 20px;" />
 Lisensi: <a href="http://www.gnu.org/licenses/gpl.html">GPL</a> (<a href="https://github.com/ivanlanin/pengakar">Kode</a>), <a href="http://creativecommons.org/licenses/by-nc/3.0/">CC-BY-NC</a> (<a href="./kamus.txt">Leksikon</a>) | <a href="./README.TXT">README.TXT</a>
 </body>
 </html>
@@ -66,7 +83,77 @@ class pengakar
 	}
 
 	/**
-	 *
+	 * Get HTML result
+	 */
+	function get_html($query)
+	{
+		$url_template = 'http://kateglo.bahtera.org/?mod=dict&action=view&phrase=%1$s';
+
+		// Process all words
+		$words = $this->stem($query);
+		$word_count = count($words);
+		// ksort($words); // normal sort
+		// sort by number of instances and alphabet
+		$keys = array_keys($words);
+		foreach ($words as $key => $word)
+		{
+			$instances[$key] = $word['count'];
+		}
+		array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
+
+
+		// Render display
+		foreach ($words as $key => $word)
+		{
+			$roots = $word['roots'];
+			$root_count = count($roots);
+			if ($word['count'] > 1)
+				$instances = ' <span class="instance">x' . $word['count'] . '</span>';
+			else
+				$instances = '';
+			if ($root_count == 0) // no match
+				$lost .= sprintf('<li><span style="color: #f00">%s</span>%s</li>',
+					$key, $instances);
+			else
+			{
+				$i = 0; unset($components);
+				foreach ($roots as $lemma => $attrib)
+				{
+					$i++;
+					$affixes = $attrib['affixes'];
+					$url = sprintf($url_template, $lemma);
+					$lemma_url = sprintf('<a href="%s" target="kateglo">%s</a>', $url, $lemma);
+					$components .= $components ? '; ' : '';
+					if ($key == $lemma && $root_count == 1) // is baseword
+						$components .= $lemma_url . $instances;
+					else
+					{
+						if ($i == 1) $components .= $key . $instances . ': ';
+						if ($root_count > 1) $components .= "({$i}) ";
+						if (is_array($attrib['prefixes']))
+							$components .= implode('', $attrib['prefixes']);
+						$components .= $lemma_url;
+						if (is_array($attrib['suffixes']))
+							$components .= implode('', $attrib['suffixes']);
+					}
+				}
+				$found .= sprintf('<li>%s</li>', $components);
+			}
+		}
+		// Render display
+		if ($word_count >= 10)
+			$ret .= '<div style="-webkit-column-count: 3; -moz-column-count: 3;">';
+		$ret .= '<ol style="margin:0;">';
+		$ret .= $lost;
+		$ret .= $found;
+		$ret .= '</ol>';
+		if ($word_count >= 10)
+			$ret .= '</div>';
+		return($ret);
+	}
+
+	/**
+	 * Tokenization
 	 */
 	function stem($query)
 	{
@@ -74,32 +161,13 @@ class pengakar
 		$raw = explode(' ', $query);
 		$raw = preg_split('/\W/', $query, -1, PREG_SPLIT_NO_EMPTY);
 		foreach ($raw as $r)
-			if (!in_array(strtolower($r), $words))
-				$words[] = strtolower($r);
-		natcasesort($words);
-		$count = count($words);
-		foreach ($words as $word)
 		{
-			$tmp = $this->stem_word($word);
-			// FIXME: Stupid hack :P
-			if ($tmp)
-			{
-				if (substr($tmp, 0, 5) == '<span')
-					$lost .= '<li>' . $tmp . '</li>';
-				else
-					$found .= '<li>' . $tmp . '</li>';
-			}
+			$key = strtolower($r);
+			$words[$key]['count']++;
 		}
-
-		if ($count >= 10)
-			$ret .= '<div style="-webkit-column-count: 3; -moz-column-count: 3;">';
-		$ret .= '<ol>';
-		$ret .= $lost;
-		$ret .= $found;
-		$ret .= '</ol>';
-		if ($count >= 10)
-			$ret .= '</div>';
-		return($ret);
+		foreach ($words as $key => $val)
+			$words[$key]['roots'] = $this->stem_word($key);
+		return($words);
 	}
 
 	/**
@@ -107,8 +175,6 @@ class pengakar
 	 */
 	function stem_word($word)
 	{
-		$url_template = 'http://kateglo.bahtera.org/?mod=dict&action=view&phrase=%1$s';
-
 		// Preprocess: Original word
 		$word = trim($word);
 		$roots = array($word => '');
@@ -129,50 +195,17 @@ class pengakar
 			else
 			{
 				// Divide affixes into suffixes and prefixes
-				// Reverse suffix order
 				foreach ($attrib['affixes'] as $affix)
 				{
 					$type = (substr($affix, 0, 1) == '-') ? 'suffixes' : 'prefixes';
 					$attrib[$type][] = $affix;
 				}
 				if (is_array($attrib['suffixes']))
-					krsort($attrib['suffixes']);
+					krsort($attrib['suffixes']); // Reverse suffix order
 				$roots[$lemma] = $attrib;
 			}
 		}
-
-		// Return if no root match dictionary
-		// FIXME: HTML renderer should be handled by other function
-		$root_count = count($roots);
-		if ($root_count == 0)
-			return('<span style="color: #f00">' . $word .  '</span>');
-		else
-		{
-			$i = 0; unset($components);
-			foreach ($roots as $lemma => $attrib)
-			{
-				$i++;
-				$affixes = $attrib['affixes'];
-				$url = sprintf($url_template, $lemma);
-				$lemma_url = sprintf('<a href="%s">%s</a>', $url, $lemma);
-				$components .= $components ? '; ' : '';
-
-				// Return word with link only when baseword, else ...
-				if ($word == $lemma && $root_count == 1)
-					$components .= $lemma_url;
-				else
-				{
-					if ($i == 1) $components .= $word . ': ';
-					if ($root_count > 1) $components .= "({$i}) ";
-					if (is_array($attrib['prefixes']))
-						$components .= implode('', $attrib['prefixes']);
-					$components .= $lemma_url;
-					if (is_array($attrib['suffixes']))
-						$components .= implode('', $attrib['suffixes']);
-				}
-			}
-			return($components);
-		}
+		return($roots);
 	}
 
 	/**
@@ -205,57 +238,36 @@ class pengakar
 	 */
 	function find_prefix(&$roots)
 	{
-		$_V = 'a|i|u|e|o'; // vowels
-		$_C = 'b|c|d|f|g|h|j|k|l|m|n|p|q|r|s|t|v|w|x|y|z'; // consonants
-		$_A = $_V . '|' . $_C; // any char
-
+		$VOWEL = 'a|i|u|e|o'; // vowels
+		$CONSONANT = 'b|c|d|f|g|h|j|k|l|m|n|p|q|r|s|t|v|w|x|y|z'; // consonants
+		$ANY = $VOWEL . '|' . $CONSONANT; // any characters
 		$rules = array(
-			array("(di)({$_A})(.+)", ""), // 0
-			array("(ke)({$_A})(.+)", ""), // 0
-			array("(se)({$_A})(.+)", ""), // 0
-			array("(be)(r)({$_V})(.+)", ""), // 1
-			array("(ber)({$_A})(.+)", ""), // 1
-			array("(be)({$_C})({$_A})(er)(.+)", ""), // 3
-			array("(te)(r)({$_V})(.+)", ""), // 6
-			array("(ter)({$_A})(.+)", ""), // 6
-			array("(ter)({$_C})(er)({$_V})(.+)", ""), // 7
-			array("(ter)({$_C})({$_A})(.+)", ""), // 8
-			array("(me)(l|m|n|r|w|y)(.+)", ""), // 10
-			array("(mem)(b|f|v)(.+)", ""), // 11
-			array("(mem)({$_V})(.+)", "p"), // 13
-			array("(mem)(p)({$_C})(.+)", ""), // p + consonant: memproklamasikan
-			array("(mempe)(r)({$_V})(.+)", ""), // 21
-			array("(memper)({$_A})(.+)", ""), // 21
-			array("(mempel)({$_A})(.+)", ""), // 21
-			array("(men)(c|d|j|z)(.+)", ""), // 14
-			array("(men)({$_V})(.+)", "t"), // 15
-			array("(men)(t)({$_C})(.+)", ""), // t + consonant: mentransmisikan
-			array("(meng)(g|h|q|x)(.+)", ""), // 16
-			array("(meng)({$_V})(.+)", ""), // 17 - Start with vocal
-			array("(meng)({$_V})(.+)", "k"), // 17
-			array("(meng)(k)({$_C})(.+)", ""), // k + consonant: mengkristalkan
-			array("(menge)({$_C})(.+)", ""), // swarabakti
-			array("(meny)({$_V})(.+)", "s"), // 18
-			array("(men)(s)({$_C})(.+)", ""), // s + consonant: mensyaratkan
-			array("(pe)({$_A})(.+)", ""), // 20
-			array("(per)({$_A})(.+)", ""), // 21
-			array("(pel)({$_A})(.+)", ""), // 21
-			//array("(per)({$_V})(.+)", ""), // 21 - Disambig
-			//array("(per)({$_C})(.+)", ""), // 22
-			array("(pe)(l|m|n|r|w|y)(.+)", ""), // 20
-			array("(pem)(b|f|v)(.+)", ""), // 25
-			array("(pem)({$_V})(.+)", "p"), // 26
-			array("(pem)({$_C})(.+)", "p"), // pemrogram
-			array("(pen)(c|d|j|z)(.+)", ""), // 27
-			array("(pen)({$_V})(.+)", "t"), // 28
-			array("(pen)(t)({$_C})(.+)", ""), // t + consonant: pentransmisian
-			array("(pen)(s)({$_C})(.+)", ""), // s + consonant: pensyaratan
-			array("(peng)(g|h|q|x)(.+)", ""), // 29
-			array("(peng)({$_V})(.+)", ""), // 30
-			array("(peng)({$_V})(.+)", "k"), // 30
-			array("(peng)(k)({$_C})(.+)", ""), // k + consonant: pengkristalan
-			array("(penge)({$_C})(.+)", ""), // swarabakti
-			array("(peny)({$_V})(.+)", "s"), // 31
+			array("(di|ke|se)({$ANY})(.+)", ""), // 0
+			array("(ber|ter)({$ANY})(.+)", ""), // 1, 6 normal
+			array("(be|te)(r)({$VOWEL})(.+)", ""), // 1, 6 be-rambut
+			array("(be|te)({$CONSONANT})({$ANY}?)(er)(.+)", ""), // 3, 7 te-bersit, te-percaya
+			array("(bel|pel)(ajar|unjur)", ""), // ajar, unjur
+			array("(me|pe)(l|m|n|r|w|y)(.+)", ""), // 10, 20: merawat, pemain
+			array("(mem|pem)(b|f|v)(.+)", ""), // 11 23: membuat, pembuat
+			array("(men|pen)(c|d|j|z)(.+)", ""), // 14 27: mencabut, pencabut
+			array("(meng|peng)(g|h|q|x)(.+)", ""), // 16 29: menggiring, penghasut
+			array("(meng|peng)({$VOWEL})(.+)", ""), // 17 30 meng-anjurkan, peng-anjur
+			array("(mem|pem)({$VOWEL})(.+)", "p"), // 13 26: memerkosa, pemerkosa
+			array("(men|pen)({$VOWEL})(.+)", "t"), // 15 28 menutup, penutup
+			array("(meng|peng)({$VOWEL})(.+)", "k"), // 17 30 mengalikan, pengali
+			array("(meny|peny)({$VOWEL})(.+)", "s"), // 18 31 menyucikan, penyucian
+			array("(mem)(punya)", ""), // Exception: mempunya
+			array("(mem)(p)({$CONSONANT})(.+)", ""), // memproklamasikan
+			array("(pem)({$CONSONANT})(.+)", "p"), // pemrogram
+			array("(men|pen)(t)({$CONSONANT})(.+)", ""), // mentransmisikan pentransmisian
+			array("(meng|peng)(k)({$CONSONANT})(.+)", ""), // mengkristalkan pengkristalan
+			array("(men|pen)(s)({$CONSONANT})(.+)", ""), // mensyaratkan pensyaratan
+			array("(menge|penge)({$CONSONANT})(.+)", ""), // swarabakti: mengepel
+			array("(mempe)(r)({$VOWEL})(.+)", ""), // 21
+			array("(memper)({$ANY})(.+)", ""), // 21
+			array("(pe)({$ANY})(.+)", ""), // 20
+			array("(per)({$ANY})(.+)", ""), // 21
+			array("(pel)({$CONSONANT})(.+)", ""), // 32 pelbagai, other?
 		);
 		foreach ($rules as $rule)
 		{
@@ -277,7 +289,6 @@ class pengakar
 			{
 				unset($new_lemma); unset($new_affix);
 				$affix_index = $is_suffix ? 2 : 1;
-				$affixes = $attrib['affixes'];
 
 				// Lemma
 				for ($i = 1; $i < count($matches); $i++)
@@ -290,22 +301,13 @@ class pengakar
 				$new_affix .= $is_suffix ? '-' : '';
 				$new_affix .= $matches[$affix_index];
 				$new_affix .= $is_suffix ? '' : '-';
-
-				// Asian (2005): Only one instance allowed.
-				// Not valid for "seseorang": COMMENT OUT
-				//if (is_array($affixes))
-				//	if (in_array($new_affix, $affixes))
-				//		continue;
-
-				// Put into array and merge with existing affixes
-				$new_affix = array($new_affix);
-				if (is_array($affixes))
-					$new_affix = array_merge($affixes, $new_affix);
+				$new_affix = array($new_affix); // make array
+				if (is_array($attrib['affixes'])) // merge
+					$new_affix = array_merge($attrib['affixes'], $new_affix);
 
 				// Push
 				$roots[$new_lemma] = array('affixes' => $new_affix);
 			}
 		}
 	}
-
 }
