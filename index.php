@@ -59,7 +59,10 @@ berarti kata tersebut tidak ditemukan di dalam leksikon dan diletakkan paling at
 dalam daftar. Daftar kata diurutkan berdasarkan jumlah kemunculan.</p>
 <?php echo($ret); ?>
 <hr style="margin-top: 20px;" />
-Lisensi: <a href="http://www.gnu.org/licenses/gpl.html">GPL</a> (<a href="https://github.com/ivanlanin/pengakar">Kode</a>), <a href="http://creativecommons.org/licenses/by-nc/3.0/">CC-BY-NC</a> (<a href="./kamus.txt">Leksikon</a>) | <a href="./README.TXT">README.TXT</a>
+Lisensi: <a href="http://www.gnu.org/licenses/gpl.html">GPL</a>
+(<a href="https://github.com/ivanlanin/pengakar">Kode</a>),
+<a href="http://creativecommons.org/licenses/by-nc/3.0/">CC-BY-NC</a>
+(<a href="./kamus.txt">Leksikon</a>) | <a href="./README.TXT">README.TXT</a>
 </body>
 </html>
 <?php
