@@ -1,6 +1,6 @@
 = Pengakar =
 
-Pengakar adalah pencari akar kata (stemmer) bahasa Indonesia.
+Pengakar (stemmer) adalah pencari akar kata bahasa Indonesia.
 
 Ivan Lanin <ivan at lanin dot org>
 
