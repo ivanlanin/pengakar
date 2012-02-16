@@ -231,7 +231,7 @@ class pengakar
 			{
 				$pattern = $is_suffix ? "(.+)({$affix})" : "({$affix})(.+)";
 				$pattern = "/^{$pattern}$/i";
-				$this->add_root($roots, $pattern);
+				$this->add_root($roots, $pattern, '', $is_suffix);
 			}
 		}
 	}
