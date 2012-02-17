@@ -161,7 +161,7 @@ class pengakar
 				array('pe-', '-kan'),
 				array('di-', '-an'),
 				array('meng-', '-an'),
-				array('ter-', '-an'),
+				// array('ter-', '-an'),
 				array('ku-', '-an'),
 			),
 			'allomorphs' => array(
