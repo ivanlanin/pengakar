@@ -17,7 +17,8 @@ Kekurangan algoritme Jelita Asian (2005)
 
 == Perubahan ==
 
-* 2012-02-16 16:21 Menambahkan kelas kata pada leksikon; kata majemuk tertangkap
+* 2012-02-17 13:13 +Beberapa konfiks yang dilarang
+* 2012-02-16 16:21 +Kelas kata pada leksikon; +kata majemuk
 * 2012-02-16 13:44 Mengurutkan berdasarkan jumlah kemunculan
 * 2012-02-16 09:32 Merapikan kode
 * 2012-02-15 18:12 Peluncuran

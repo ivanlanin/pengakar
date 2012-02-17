@@ -42,6 +42,8 @@ if ($q)
 <style>
 a { text-decoration: none; }
 .instance { color: #666; font-style: italic; font-size: 80%; }
+.wclass { color: #666; font-style: italic; font-size: 80%; }
+.notfound { color: #f00; }
 </style>
 <body>
 <h2>Pengakar</h2>
@@ -73,24 +75,87 @@ Lisensi: <a href="http://www.gnu.org/licenses/gpl.html">GPL</a>
 class pengakar
 {
 	var $dict;
+	var $rules;
 
 	/**
 	 *
 	 */
 	function __construct()
 	{
+		// Read dictionary and create associative array
 		$dict = file_get_contents('./kamus.txt');
 		$tmp = explode("\n", $dict);
-		// create associative array
 		foreach ($tmp as $entry)
 		{
-			$entry = strtolower($entry);
-			$attrib = explode("\t", $entry);
-			$class = $attrib[0];
-			$lemma = $attrib[1];
-			$key = str_replace(' ', '', $lemma);
-			$this->dict[$key] = array('class' => $class, 'lemma' => $lemma);
+			$attrib = explode("\t", strtolower($entry)); // 0: class; 1: lemma
+			$key = str_replace(' ', '', $attrib[1]); // remove space
+			$this->dict[$key] = array('class' => $attrib[0], 'lemma' => $attrib[1]);
 		}
+		// Define rules
+		$VOWEL = 'a|i|u|e|o'; // vowels
+		$CONSONANT = 'b|c|d|f|g|h|j|k|l|m|n|p|q|r|s|t|v|w|x|y|z'; // consonants
+		$ANY = $VOWEL . '|' . $CONSONANT; // any characters
+		$this->rules = array(
+			'affixes' => array(
+				array(1, "(.+)(kah)", ""),
+				array(1, "(.+)(lah)", ""),
+				array(1, "(.+)(tah)", ""),
+				array(1, "(.+)(pun)", ""),
+				array(1, "(.+)(mu)", ""),
+				array(1, "(.+)(ku)", ""),
+				array(1, "(.+)(nya)", ""),
+				array(1, "(.+)(i)", ""),
+				array(1, "(.+)(kan)", ""),
+				array(1, "(.+)(an)", ""),
+				array(0, "(ku)(.+)", ""),
+				array(0, "(kau)(.+)", ""),
+			),
+			'prefixes' => array(
+				array(0, "(di|ke|se)({$ANY})(.+)", ""), // 0
+				array(0, "(ber|ter)({$ANY})(.+)", ""), // 1, 6 normal
+				array(0, "(be|te)(r)({$VOWEL})(.+)", ""), // 1, 6 be-rambut
+				array(0, "(be|te)({$CONSONANT})({$ANY}?)(er)(.+)", ""), // 3, 7 te-bersit, te-percaya
+				array(0, "(bel|pel)(ajar|unjur)", ""), // ajar, unjur
+				array(0, "(me|pe)(l|m|n|r|w|y)(.+)", ""), // 10, 20: merawat, pemain
+				array(0, "(mem|pem)(b|f|v)(.+)", ""), // 11 23: membuat, pembuat
+				array(0, "(men|pen)(c|d|j|z)(.+)", ""), // 14 27: mencabut, pencabut
+				array(0, "(meng|peng)(g|h|q|x)(.+)", ""), // 16 29: menggiring, penghasut
+				array(0, "(meng|peng)({$VOWEL})(.+)", ""), // 17 30 meng-anjurkan, peng-anjur
+				array(0, "(mem|pem)({$VOWEL})(.+)", "p"), // 13 26: memerkosa, pemerkosa
+				array(0, "(men|pen)({$VOWEL})(.+)", "t"), // 15 28 menutup, penutup
+				array(0, "(meng|peng)({$VOWEL})(.+)", "k"), // 17 30 mengalikan, pengali
+				array(0, "(meny|peny)({$VOWEL})(.+)", "s"), // 18 31 menyucikan, penyucian
+				array(0, "(mem)(punya)", ""), // Exception: mempunya
+				array(0, "(mem)(p)({$CONSONANT})(.+)", ""), // memproklamasikan
+				array(0, "(pem)({$CONSONANT})(.+)", "p"), // pemrogram
+				array(0, "(men|pen)(t)({$CONSONANT})(.+)", ""), // mentransmisikan pentransmisian
+				array(0, "(meng|peng)(k)({$CONSONANT})(.+)", ""), // mengkristalkan pengkristalan
+				array(0, "(men|pen)(s)({$CONSONANT})(.+)", ""), // mensyaratkan pensyaratan
+				array(0, "(menge|penge)({$CONSONANT})(.+)", ""), // swarabakti: mengepel
+				array(0, "(mempe)(r)({$VOWEL})(.+)", ""), // 21
+				array(0, "(memper)({$ANY})(.+)", ""), // 21
+				array(0, "(pe)({$ANY})(.+)", ""), // 20
+				array(0, "(per)({$ANY})(.+)", ""), // 21
+				array(0, "(pel)({$CONSONANT})(.+)", ""), // 32 pelbagai, other?
+			),
+			'disallowed_confixes' => array(
+				array('ber-', '-i'),
+				array('ke-', '-i'),
+				array('ke-', '-kan'),
+				array('di-', '-an'),
+				array('meng-', '-an'),
+				array('ter-', '-an'),
+				array('ku-', '-an'),
+			),
+			'allomorphs' => array(
+				'be' => array('be-', 'ber-', 'bel-'),
+				'te' => array('te-', 'ter-', 'tel-'),
+				'pe' => array('pe-', 'per-', 'pel-'),
+				'me' => array('me-', 'men-', 'mem-', 'meng-', 'meny-', 'menge-'),
+				'pe' => array('pe-', 'pen-', 'pem-', 'peng-', 'peny-', 'penge-'),
+			),
+		);
+
 	}
 
 	/**
@@ -110,7 +175,8 @@ class pengakar
 		{
 			$instances[$key] = $word['count'];
 		}
-		array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
+		//array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
+		array_multisort($keys, SORT_ASC, $words);
 
 
 		// Render display
@@ -118,12 +184,13 @@ class pengakar
 		{
 			$roots = $word['roots'];
 			$root_count = count($roots);
+			//if ($root_count <= 1) continue; // display disambig only
 			if ($word['count'] > 1)
 				$instances = ' <span class="instance">x' . $word['count'] . '</span>';
 			else
 				$instances = '';
 			if ($root_count == 0) // no match
-				$lost .= sprintf('<li><span style="color: #f00">%s</span>%s</li>',
+				$lost .= sprintf('<li><span class="notfound">%s</span>%s</li>',
 					$key, $instances);
 			else
 			{
@@ -136,21 +203,22 @@ class pengakar
 					$lemma_url = sprintf('<a href="%s" target="kateglo">%s</a>', $url, $attrib['lemma']);
 					$components .= $components ? '; ' : '';
 					if ($key == $lemma && $root_count == 1) // is baseword
-						$components .= $lemma_url . $instances;
+						$components .= $lemma_url . $instances . $class;
 					else
 					{
-						if ($root_count > 1) // multiroot
-						{
-							if ($i == 1)
-								$components .= $key . $instances . ': ';
+						// Multiroot
+						if ($root_count > 1 && $i == 1)
+							$components .= $key . $instances . ': ';
+						if ($root_count > 1)
 							$components .= "({$i}) ";
-						}
+						// Prefix, lemma, & suffix
 						if (is_array($attrib['prefixes']))
 							$components .= implode('', $attrib['prefixes']);
 						$components .= $lemma_url;
 						if (is_array($attrib['suffixes']))
 							$components .= implode('', $attrib['suffixes']);
-						if ($root_count == 1) // single root
+						// Single root
+						if ($root_count == 1)
 							$components .= $instances;
 					}
 				}
@@ -199,107 +267,68 @@ class pengakar
 			$roots[$word]['affixes'] = array();
 
 		// Process: Find suffixes, pronoun prefix, and other prefix (3 times, Asian)
-		$this->find_affixes($roots);
+		foreach ($this->rules['affixes'] as $rule)
+			$this->add_root($roots, $rule);
 		for ($i = 0; $i < 3; $i++)
-			$this->find_prefix($roots);
+			foreach ($this->rules['prefixes'] as $rule)
+				$this->add_root($roots, $rule);
 
-		// Postprocess, remove when root not found in dictionary
-		$i = 0;
+		// Postprocess 1: Select valid affixes
 		foreach ($roots as $lemma => $attrib)
 		{
+			// Not in dictionary? Unset and exit
 			if (!array_key_exists($lemma, $this->dict))
-				unset($roots[$lemma]);
-			else
 			{
-				$attrib['lemma'] = $this->dict[$lemma]['lemma'];
-				// Divide affixes into suffixes and prefixes
-				foreach ($attrib['affixes'] as $affix)
-				{
-					$type = (substr($affix, 0, 1) == '-') ? 'suffixes' : 'prefixes';
-					$attrib[$type][] = $affix;
-				}
-				if (is_array($attrib['suffixes']))
-					krsort($attrib['suffixes']); // Reverse suffix order
-				$roots[$lemma] = $attrib;
+				unset($roots[$lemma]);
+				continue;
 			}
+			// Check if allowed: Can be allomorph
+			$affixes = $attrib['affixes'];
+			foreach ($this->rules['disallowed_confixes'] as $pair)
+			{
+				$prefix = $pair[0];
+				$suffix = $pair[1];
+				$prefix_key = substr($prefix, 0, 2);
+				if (array_key_exists($prefix_key, $this->rules['allomorphs']))
+				{
+					foreach ($this->rules['allomorphs'][$prefix_key] as $allomorf)
+						if (in_array($allomorf, $affixes) && in_array($suffix, $affixes))
+							unset($roots[$lemma]);
+				}
+				else
+					if (in_array($prefix, $affixes) && in_array($suffix, $affixes))
+						unset($roots[$lemma]);
+			}
+		}
+
+		// Postprocess 2: Handle suffixes and prefixes
+		foreach ($roots as $lemma => $attrib)
+		{
+			$affixes = $attrib['affixes'];
+			$attrib['lemma'] = $this->dict[$lemma]['lemma'];
+			$attrib['class'] = $this->dict[$lemma]['class'];
+			// Divide affixes into suffixes and prefixes
+			foreach ($attrib['affixes'] as $affix)
+			{
+				$type = (substr($affix, 0, 1) == '-') ? 'suffixes' : 'prefixes';
+				$attrib[$type][] = $affix;
+			}
+			// Reverse suffix order
+			if (is_array($attrib['suffixes']))
+				krsort($attrib['suffixes']);
+			$roots[$lemma] = $attrib;
 		}
 		return($roots);
 	}
 
 	/**
-	 * Find particle suffixes (part), pronoun suffixes (pros),
-	 * derivational suffixes (derv), and pronoun prefixes (proa)
-	 */
-	function find_affixes(&$roots)
-	{
-		$groups = array(
-			'part' => array('is_suffix' => 1, 'affixes' => 'kah,lah,tah,pun'),
-			'pros' => array('is_suffix' => 1, 'affixes' => 'mu,ku,nya'),
-			'derv' => array('is_suffix' => 1, 'affixes' => 'i,kan,an'),
-			'proa' => array('is_suffix' => 0, 'affixes' => 'ku,kau'),
-		);
-		foreach ($groups as $group)
-		{
-			$affixes = explode(',', $group['affixes']);
-			$is_suffix = $group['is_suffix'];
-			foreach ($affixes as $affix)
-			{
-				$pattern = $is_suffix ? "(.+)({$affix})" : "({$affix})(.+)";
-				$pattern = "/^{$pattern}$/i";
-				$this->add_root($roots, $pattern, '', $is_suffix);
-			}
-		}
-	}
-
-	/**
-	 *
-	 */
-	function find_prefix(&$roots)
-	{
-		$VOWEL = 'a|i|u|e|o'; // vowels
-		$CONSONANT = 'b|c|d|f|g|h|j|k|l|m|n|p|q|r|s|t|v|w|x|y|z'; // consonants
-		$ANY = $VOWEL . '|' . $CONSONANT; // any characters
-		$rules = array(
-			array("(di|ke|se)({$ANY})(.+)", ""), // 0
-			array("(ber|ter)({$ANY})(.+)", ""), // 1, 6 normal
-			array("(be|te)(r)({$VOWEL})(.+)", ""), // 1, 6 be-rambut
-			array("(be|te)({$CONSONANT})({$ANY}?)(er)(.+)", ""), // 3, 7 te-bersit, te-percaya
-			array("(bel|pel)(ajar|unjur)", ""), // ajar, unjur
-			array("(me|pe)(l|m|n|r|w|y)(.+)", ""), // 10, 20: merawat, pemain
-			array("(mem|pem)(b|f|v)(.+)", ""), // 11 23: membuat, pembuat
-			array("(men|pen)(c|d|j|z)(.+)", ""), // 14 27: mencabut, pencabut
-			array("(meng|peng)(g|h|q|x)(.+)", ""), // 16 29: menggiring, penghasut
-			array("(meng|peng)({$VOWEL})(.+)", ""), // 17 30 meng-anjurkan, peng-anjur
-			array("(mem|pem)({$VOWEL})(.+)", "p"), // 13 26: memerkosa, pemerkosa
-			array("(men|pen)({$VOWEL})(.+)", "t"), // 15 28 menutup, penutup
-			array("(meng|peng)({$VOWEL})(.+)", "k"), // 17 30 mengalikan, pengali
-			array("(meny|peny)({$VOWEL})(.+)", "s"), // 18 31 menyucikan, penyucian
-			array("(mem)(punya)", ""), // Exception: mempunya
-			array("(mem)(p)({$CONSONANT})(.+)", ""), // memproklamasikan
-			array("(pem)({$CONSONANT})(.+)", "p"), // pemrogram
-			array("(men|pen)(t)({$CONSONANT})(.+)", ""), // mentransmisikan pentransmisian
-			array("(meng|peng)(k)({$CONSONANT})(.+)", ""), // mengkristalkan pengkristalan
-			array("(men|pen)(s)({$CONSONANT})(.+)", ""), // mensyaratkan pensyaratan
-			array("(menge|penge)({$CONSONANT})(.+)", ""), // swarabakti: mengepel
-			array("(mempe)(r)({$VOWEL})(.+)", ""), // 21
-			array("(memper)({$ANY})(.+)", ""), // 21
-			array("(pe)({$ANY})(.+)", ""), // 20
-			array("(per)({$ANY})(.+)", ""), // 21
-			array("(pel)({$CONSONANT})(.+)", ""), // 32 pelbagai, other?
-		);
-		foreach ($rules as $rule)
-		{
-			$pattern = '/^' . $rule[0] . '$/i';
-			$variant = $rule[1];
-			$this->add_root($roots, $pattern, $variant, 0);
-		}
-	}
-
-	/**
 	 * Greedy algorithm: add every possible branch
 	 */
-	function add_root(&$roots, $pattern, $variant = '', $is_suffix = 1)
+	function add_root(&$roots, $rule)
 	{
+		$is_suffix = $rule[0];
+		$pattern = '/^' . $rule[1] . '$/i';
+		$variant = $rule[2];
 		foreach ($roots as $lemma => $attrib)
 		{
 			preg_match($pattern, $lemma, $matches);
