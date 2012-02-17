@@ -142,6 +142,7 @@ class pengakar
 				array('ber-', '-i'),
 				array('ke-', '-i'),
 				array('ke-', '-kan'),
+				array('pe-', '-kan'),
 				array('di-', '-an'),
 				array('meng-', '-an'),
 				array('ter-', '-an'),
