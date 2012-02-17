@@ -19,47 +19,63 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 $pengakar = new pengakar;
-
-$q = stripslashes($_POST['q']); // Unix server. Suhosin?
-
-$ret .= '<form action="./" method="post" style="margin-bottom: 20px;">';
-$ret .= '<textarea id="q" name="q" style="width:90%;" rows="10">' . $q . '</textarea>';
-$ret .= '<br />';
-$ret .= '<input type="submit" value="Proses" />';
-$ret .= '</form>';
+$url = $_GET['url'] ? $_GET['url'] : $_POST['url'];
+if ($url)
+	$q = $pengakar->get_content($url);
+else
+	$q = stripslashes($_POST['q']); // Unix server. Suhosin?
+// Form
+$form .= '<form action="./" method="post" style="margin-bottom: 20px;">';
+$form .= 'URL:<br /><input type="text" id="url" name="url" value="' . $url . '" />';
+$form .= 'Teks:<br /><textarea id="q" name="q">' . $q . '</textarea>';
+$form .= '<br />';
+$form .= '<input type="submit" value="Proses" />';
+$form .= '</form>';
+// Result
 if ($q)
 {
-	$ret .= '<h3>Daftar kata</h3>';
-	$ret .= $pengakar->get_html($q);
+	$result .= '<h3>Daftar kata</h3>';
+	$result .= $pengakar->get_html($q);
 }
+$ret = $form . $result;
+$info = 'Seret dan lepaskan tautan ini ke bilah markah peramban untuk membuat ' .
+	'bookmarklet yang dapat dipakai untuk menjalankan pengakar untuk ' .
+	'menganalisis isi situs yang sedang Anda kunjungi.';
+$bookmarklet = 'javascript:(function(){window.open(\'' .
+	'http://' . $_SERVER['SERVER_NAME'] . '/pengakar/' .
+	'?url=\'+encodeURIComponent(location.href));})();';
 ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" dir="ltr" lang="id">
+<html>
 <head>
 <title>Pengakar</title>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <style>
 a { text-decoration: none; }
-.instance { color: #666; font-style: italic; font-size: 80%; }
-.wclass { color: #666; font-style: italic; font-size: 80%; }
-.notfound { color: #f00; }
+.instance { color:#666; font-style:italic; font-size:80%; }
+.wclass { color:#666; font-style:italic; font-size:80%; }
+.notfound { color:#f00; }
+#url { width:100%; }
+#q { width:100%; height:200px; }
 </style>
 <body>
-<h2>Pengakar</h2>
-<p>Pengakar (<em><a href="http://en.wikipedia.org/wiki/Stemming">stemmer</a></em>)
+<h2><a href="./">Pengakar</a></h2>
+
+<p><a title="<?php echo($info); ?>" href="<?php echo($bookmarklet); ?>">Pengakar</a>
+(<em><a href="http://en.wikipedia.org/wiki/Stemming">stemmer</a></em>)
 adalah program pencari akar kata bahasa Indonesia. Program ini dibuat dengan
 menyempurnakan beberapa algoritme yang diperoleh dari berbagai sumber, terutama
 artikel "<a href="http://dl.acm.org/citation.cfm?id=1082195">Stemming Indonesian</a>"
 (Asian, 2005). Tentu saja program ini masih terus disempurnakan dan, karena itu,
 mohon bantuan untuk melaporkan kesalahan kepada
 <a href="http://twitter.com/ivanlanin">@ivanlanin</a>. Terima kasih.</p>
-<p>Silakan masukkan kata (bisa dipisahkan dengan spasi, koma, atau baris baru)
-atau salin rekatkan teks pada kotak di bawah ini. Klik "Proses" dan pengakar
-akan berupaya mencari akar kata tersebut. Warna <span style="color:#f00">merah</span>
-berarti kata tersebut tidak ditemukan di dalam leksikon dan diletakkan paling atas
-dalam daftar. Daftar kata diurutkan berdasarkan jumlah kemunculan.</p>
+
+<p>Masukkan alamat laman web pada kotak "URL" atau teks pada kotak "teks".
+Klik "Proses" dan pengakar akan berupaya mencari akar kata tersebut.
+Warna <span style="color:#f00">merah</span> berarti kata tersebut tidak ditemukan
+di dalam leksikon dan diletakkan paling atas dalam daftar.
+Daftar kata diurutkan berdasarkan jumlah kemunculan.</p>
 <?php echo($ret); ?>
+
 <hr style="margin-top: 20px;" />
 Lisensi: <a href="http://www.gnu.org/licenses/gpl.html">GPL</a>
 (<a href="https://github.com/ivanlanin/pengakar">Kode</a>),
@@ -125,7 +141,6 @@ class pengakar
 				array(0, "(men|pen)({$VOWEL})(.+)", "t"), // 15 28 menutup, penutup
 				array(0, "(meng|peng)({$VOWEL})(.+)", "k"), // 17 30 mengalikan, pengali
 				array(0, "(meny|peny)({$VOWEL})(.+)", "s"), // 18 31 menyucikan, penyucian
-				array(0, "(mem)(punya)", ""), // Exception: mempunya
 				array(0, "(mem)(p)({$CONSONANT})(.+)", ""), // memproklamasikan
 				array(0, "(pem)({$CONSONANT})(.+)", "p"), // pemrogram
 				array(0, "(men|pen)(t)({$CONSONANT})(.+)", ""), // mentransmisikan pentransmisian
@@ -137,11 +152,12 @@ class pengakar
 				array(0, "(pe)({$ANY})(.+)", ""), // 20
 				array(0, "(per)({$ANY})(.+)", ""), // 21
 				array(0, "(pel)({$CONSONANT})(.+)", ""), // 32 pelbagai, other?
+				array(0, "(mem)(punya)", ""), // Exception: mempunya
+				array(0, "(pen)(yair)", "s"), // Exception: penyair > syair
 			),
 			'disallowed_confixes' => array(
 				array('ber-', '-i'),
 				array('ke-', '-i'),
-				array('ke-', '-kan'),
 				array('pe-', '-kan'),
 				array('di-', '-an'),
 				array('meng-', '-an'),
@@ -157,6 +173,29 @@ class pengakar
 			),
 		);
 
+	}
+
+	function get_content($url)
+	{
+		// Curl
+		$agent = "Mozilla/5.0 (Windows; U; Windows NT 5.0; en; rv:1.9.0.4) Gecko/2009011913 Firefox/3.0.6";
+		$domain = 'http://' . parse_url($url, PHP_URL_HOST);
+		$curl = curl_init();
+		curl_setopt($curl, CURLOPT_URL, $url);
+		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($curl, CURLOPT_REFERER, $domain);
+		curl_setopt($curl, CURLOPT_USERAGENT, $agent);
+		$html = curl_exec($curl);
+		curl_close($curl);
+		// Process HTML
+		$ret = $html;
+		$ret = preg_replace('/<(script|style)\b[^>]*>(.*?)<\/\1>/is', "", $ret);
+		$ret = preg_replace('/<(br|p)[^>]*>/i', "\n", $ret);
+		$ret = trim(strip_tags($ret));
+		$ret = preg_replace('/^\s*/m', '', $ret); // trim left
+		$ret = preg_replace('/\s*$/m', '', $ret); // trim right
+		$ret = preg_replace('/\n+/', "\n\n", $ret);
+		return($ret);
 	}
 
 	/**

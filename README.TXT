@@ -17,6 +17,7 @@ Kekurangan algoritme Jelita Asian (2005)
 
 == Perubahan ==
 
+* 2012-02-17 17:44 +Baca dari URL
 * 2012-02-17 13:13 +Beberapa konfiks yang dilarang
 * 2012-02-16 16:21 +Kelas kata pada leksikon; +kata majemuk
 * 2012-02-16 13:44 Mengurutkan berdasarkan jumlah kemunculan
