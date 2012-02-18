@@ -27,9 +27,7 @@ else
 	$q = stripslashes($_GET['q'] ? $_GET['q'] : $_POST['q']); // Suhosin?
 // Process API
 if (isset($_GET['api']))
-{
 	die($pengakar->get_api($q));
-}
 // Process HTML
 if ($q)
 {
@@ -215,9 +213,7 @@ class pengakar
 	{
 		$words = $this->stem($query);
 		if ($query != '')
-		{
 			return(json_encode($words));
-		}
 		return('Sintaks API Pengakar:<br /><br />' .
 			'* <a href="./?api=1&q=pengakar">?api=1&q=...</a><br />' .
 			'* <a href="./?api=1&url=http://ivan.lanin.org/pengakar/">?api=1&url=...</a><br /><br />' .
