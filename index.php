@@ -349,6 +349,13 @@ class pengakar
 		$roots = array($word => '');
 		if (array_key_exists($word, $this->dict))
 			$roots[$word]['affixes'] = array();
+		// Has dash? Try to also find root for each element
+		if (strpos($word, '-'))
+		{
+			$dash_parts = explode('-', $word);
+			foreach ($dash_parts as $dash_part)
+				$roots[$dash_part]['affixes'] = array();
+		}
 
 		// Process: Find suffixes, pronoun prefix, and other prefix (3 times, Asian)
 		foreach ($this->rules['affixes'] as $rule)
