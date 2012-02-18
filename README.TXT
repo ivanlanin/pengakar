@@ -17,6 +17,8 @@ Kekurangan algoritme Jelita Asian (2005):
 
 == Perubahan ==
 
+* 2012-02-18 23:23 Opsi:SORT_INSTANCE, NO_NO_MATCH, NO_DIGIT_ONLY
+* 2012-02-18 23:01 Proses kata ulang
 * 2012-02-17 18:43 API sederhana
 * 2012-02-17 17:44 +Baca dari URL
 * 2012-02-17 13:13 +Beberapa konfiks yang dilarang

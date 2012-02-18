@@ -100,6 +100,7 @@ class pengakar
 {
 	var $dict;
 	var $rules;
+	var $options;
 
 	/**
 	 *
@@ -115,6 +116,12 @@ class pengakar
 			$key = str_replace(' ', '', $attrib[1]); // remove space
 			$this->dict[$key] = array('class' => $attrib[0], 'lemma' => $attrib[1]);
 		}
+		// Options
+		$this->options = array(
+			'SORT_INSTANCE'	=> false, // sort by number of instances
+			'NO_NO_MATCH'	=> false, // hide no match entry
+			'NO_DIGIT_ONLY'	=> true, // hide digit only
+		);
 		// Define rules
 		$VOWEL = 'a|i|u|e|o'; // vowels
 		$CONSONANT = 'b|c|d|f|g|h|j|k|l|m|n|p|q|r|s|t|v|w|x|y|z'; // consonants
@@ -191,18 +198,18 @@ class pengakar
 		$curl = curl_init();
 		curl_setopt($curl, CURLOPT_URL, $url);
 		curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($curl, CURLOPT_REFERER, $domain);
-		curl_setopt($curl, CURLOPT_USERAGENT, $agent);
+		curl_setopt($curl, CURLOPT_REFERER, $domain); // pseudo referer
+		curl_setopt($curl, CURLOPT_USERAGENT, $agent); // pseudo agent
 		$html = curl_exec($curl);
 		curl_close($curl);
 		// Process HTML
 		$ret = $html;
-		$ret = preg_replace('/<(script|style)\b[^>]*>(.*?)<\/\1>/is', "", $ret);
-		$ret = preg_replace('/<(br|p)[^>]*>/i', "\n", $ret);
-		$ret = trim(strip_tags($ret));
+		$ret = preg_replace('/<(script|style)\b[^>]*>(.*?)<\/\1>/is', "", $ret); // remove script & style
+		$ret = preg_replace('/<(br|p)[^>]*>/i', "\n", $ret); // new line for br & p
+		$ret = trim(strip_tags($ret)); // strip tags
 		$ret = preg_replace('/^\s*/m', '', $ret); // trim left
 		$ret = preg_replace('/\s*$/m', '', $ret); // trim right
-		$ret = preg_replace('/\n+/', "\n\n", $ret);
+		$ret = preg_replace('/\n+/', "\n\n", $ret); // two new line: readability
 		return($ret);
 	}
 
@@ -214,7 +221,8 @@ class pengakar
 		$words = $this->stem($query);
 		if ($query != '')
 			return(json_encode($words));
-		return('Sintaks API Pengakar:<br /><br />' .
+		return('API Pengakar<br /><br />' .
+			'Sintaks:<br />' .
 			'* <a href="./?api=1&q=pengakar">?api=1&q=...</a><br />' .
 			'* <a href="./?api=1&url=http://ivan.lanin.org/pengakar/">?api=1&url=...</a><br /><br />' .
 			'Hasil:<br />' .
@@ -232,10 +240,11 @@ class pengakar
 	 */
 	function get_html($query)
 	{
-		$url_template = 'http://kateglo.bahtera.org/?mod=dict&action=view&phrase=%1$s';
 		$words = $this->stem($query);
+		$url_template = 'http://kateglo.bahtera.org/?mod=dict&action=view&phrase=%1$s';
 
 		// Render display
+		$word_count = count($words);
 		foreach ($words as $key => $word)
 		{
 			$roots = $word['roots'];
@@ -299,22 +308,34 @@ class pengakar
 	function stem($query)
 	{
 		$words = array();
-		$raw = explode(' ', $query);
-		$raw = preg_split('/\W/', $query, -1, PREG_SPLIT_NO_EMPTY);
+		$raw = preg_split('/[^a-zA-Z0-9\-]/', $query, -1, PREG_SPLIT_NO_EMPTY);
 		foreach ($raw as $r)
 		{
+			// All digit
+			if ($this->options['NO_DIGIT_ONLY'] && preg_match('/^\d+$/', $r))
+				continue;
 			$key = strtolower($r);
 			$words[$key]['count']++;
 		}
 		foreach ($words as $key => $word)
 		{
 			$words[$key]['roots'] = $this->stem_word($key);
+			// If NO_NO_MATCH, remove words that has no root
+			if (count($words[$key]['roots']) == 0 && $this->options['NO_NO_MATCH'])
+			{
+				unset($words[$key]);
+				continue;
+			}
 			$instances[$key] = $word['count'];
 		}
 		$word_count = count($words);
-		$keys = array_keys($words);
-		//array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
-		array_multisort($keys, SORT_ASC, $words);
+		if ($this->options['SORT_INSTANCE'])
+		{
+			$keys = array_keys($words);
+			array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
+		}
+		else
+			ksort($words);
 		return($words);
 	}
 
