@@ -4,7 +4,7 @@ Pengakar (stemmer) adalah pencari akar kata bahasa Indonesia.
 
 Ivan Lanin <ivan at lanin dot org>
 
-Kekurangan algoritme Jelita Asian (2005)
+Kekurangan algoritme Jelita Asian (2005):
 
 # Tiap imbuhan hanya diizinkan muncul satu kali. Gagal: se-se-orang
 # Berhenti jika sudah ada entri yang cocok. Gagal: mereka, me-reka
@@ -12,11 +12,12 @@ Kekurangan algoritme Jelita Asian (2005)
 
 == Lisensi ==
 
-* Kode: GPL
-* Leksikon: CC-BY-NC
+* Kode: http://www.gnu.org/licenses/gpl.html
+* Leksikon: http://creativecommons.org/licenses/by-nc/3.0/
 
 == Perubahan ==
 
+* 2012-02-17 18:43 API sederhana
 * 2012-02-17 17:44 +Baca dari URL
 * 2012-02-17 13:13 +Beberapa konfiks yang dilarang
 * 2012-02-16 16:21 +Kelas kata pada leksikon; +kata majemuk

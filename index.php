@@ -18,12 +18,24 @@
  */
 error_reporting(E_ALL & ~E_NOTICE);
 
+// Parameters
 $pengakar = new pengakar;
 $url = $_GET['url'] ? $_GET['url'] : $_POST['url'];
 if ($url)
 	$q = $pengakar->get_content($url);
 else
-	$q = stripslashes($_POST['q']); // Unix server. Suhosin?
+	$q = stripslashes($_GET['q'] ? $_GET['q'] : $_POST['q']); // Suhosin?
+// Process API
+if (isset($_GET['api']))
+{
+	die($pengakar->get_api($q));
+}
+// Process HTML
+if ($q)
+{
+	$result .= '<h3>Daftar kata</h3>';
+	$result .= $pengakar->get_html($q);
+}
 // Form
 $form .= '<form action="./" method="post" style="margin-bottom: 20px;">';
 $form .= 'URL:<br /><input type="text" id="url" name="url" value="' . $url . '" />';
@@ -31,12 +43,7 @@ $form .= 'Teks:<br /><textarea id="q" name="q">' . $q . '</textarea>';
 $form .= '<br />';
 $form .= '<input type="submit" value="Proses" />';
 $form .= '</form>';
-// Result
-if ($q)
-{
-	$result .= '<h3>Daftar kata</h3>';
-	$result .= $pengakar->get_html($q);
-}
+// HTML
 $ret = $form . $result;
 $info = 'Seret dan lepaskan tautan ini ke bilah markah peramban untuk membuat ' .
 	'bookmarklet yang dapat dipakai untuk menjalankan pengakar untuk ' .
@@ -51,6 +58,7 @@ $bookmarklet = 'javascript:(function(){window.open(\'' .
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <style>
 a { text-decoration: none; }
+hr { margin-top: 20px; height: 1px; border-width:0; background: #999; }
 .instance { color:#666; font-style:italic; font-size:80%; }
 .wclass { color:#666; font-style:italic; font-size:80%; }
 .notfound { color:#f00; }
@@ -76,11 +84,13 @@ di dalam leksikon dan diletakkan paling atas dalam daftar.
 Daftar kata diurutkan berdasarkan jumlah kemunculan.</p>
 <?php echo($ret); ?>
 
-<hr style="margin-top: 20px;" />
-Lisensi: <a href="http://www.gnu.org/licenses/gpl.html">GPL</a>
-(<a href="https://github.com/ivanlanin/pengakar">Kode</a>),
-<a href="http://creativecommons.org/licenses/by-nc/3.0/">CC-BY-NC</a>
-(<a href="./kamus.txt">Leksikon</a>) | <a href="./README.TXT">README.TXT</a>
+<hr />
+<a href="./README.TXT">README</a> |
+<a href="./?api=1">API</a> |
+<a href="https://github.com/ivanlanin/pengakar">Kode</a>
+(<a href="http://www.gnu.org/licenses/gpl.html">GPL</a>) |
+<a href="./kamus.txt">Leksikon</a>
+(<a href="http://creativecommons.org/licenses/by-nc/3.0/">BY-NC</a>)
 </body>
 </html>
 <?php
@@ -199,25 +209,35 @@ class pengakar
 	}
 
 	/**
+	 * Get API result
+	 */
+	function get_api($query)
+	{
+		$words = $this->stem($query);
+		if ($query != '')
+		{
+			return(json_encode($words));
+		}
+		return('Sintaks API Pengakar:<br /><br />' .
+			'* <a href="./?api=1&q=pengakar">?api=1&q=...</a><br />' .
+			'* <a href="./?api=1&url=http://ivan.lanin.org/pengakar/">?api=1&url=...</a><br /><br />' .
+			'Hasil:<br />' .
+			'lemma => { <br />' .
+			'&nbsp;&nbsp;count,<br />' .
+			'&nbsp;&nbsp;roots => { <br />' .
+			'&nbsp;&nbsp;&nbsp;&nbsp;root => lemma, affixes {}, suffixes {}, prefixes {} <br />' .
+			'&nbsp;&nbsp;} <br />' .
+			'}' .
+			'');
+	}
+
+	/**
 	 * Get HTML result
 	 */
 	function get_html($query)
 	{
 		$url_template = 'http://kateglo.bahtera.org/?mod=dict&action=view&phrase=%1$s';
-
-		// Process all words
 		$words = $this->stem($query);
-		$word_count = count($words);
-		// ksort($words); // normal sort
-		// sort by number of instances and alphabet
-		$keys = array_keys($words);
-		foreach ($words as $key => $word)
-		{
-			$instances[$key] = $word['count'];
-		}
-		//array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
-		array_multisort($keys, SORT_ASC, $words);
-
 
 		// Render display
 		foreach ($words as $key => $word)
@@ -290,8 +310,15 @@ class pengakar
 			$key = strtolower($r);
 			$words[$key]['count']++;
 		}
-		foreach ($words as $key => $val)
+		foreach ($words as $key => $word)
+		{
 			$words[$key]['roots'] = $this->stem_word($key);
+			$instances[$key] = $word['count'];
+		}
+		$word_count = count($words);
+		$keys = array_keys($words);
+		//array_multisort($instances, SORT_DESC, $keys, SORT_ASC, $words);
+		array_multisort($keys, SORT_ASC, $words);
 		return($words);
 	}
 
