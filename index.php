@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.	If not, see <http://www.gnu.org/licenses/>.
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 error_reporting(E_ALL & ~E_NOTICE);
 
@@ -121,6 +121,7 @@ class pengakar
 			'SORT_INSTANCE'	=> false, // sort by number of instances
 			'NO_NO_MATCH'	=> false, // hide no match entry
 			'NO_DIGIT_ONLY'	=> true, // hide digit only
+			'STRICT_CONFIX'	=> false, // use strict disallowed_confixes rules
 		);
 		// Define rules
 		$VOWEL = 'a|i|u|e|o'; // vowels
@@ -128,18 +129,10 @@ class pengakar
 		$ANY = $VOWEL . '|' . $CONSONANT; // any characters
 		$this->rules = array(
 			'affixes' => array(
-				array(1, "(.+)(kah)", ""),
-				array(1, "(.+)(lah)", ""),
-				array(1, "(.+)(tah)", ""),
-				array(1, "(.+)(pun)", ""),
-				array(1, "(.+)(mu)", ""),
-				array(1, "(.+)(ku)", ""),
-				array(1, "(.+)(nya)", ""),
-				array(1, "(.+)(i)", ""),
-				array(1, "(.+)(kan)", ""),
-				array(1, "(.+)(an)", ""),
-				array(0, "(ku)(.+)", ""),
-				array(0, "(kau)(.+)", ""),
+				array(1, array('kah', 'lah', 'tah', 'pun')),
+				array(1, array('mu', 'ku', 'nya')),
+				array(0, array('ku', 'kau')),
+				array(1, array('i', 'kan', 'an')),
 			),
 			'prefixes' => array(
 				array(0, "(di|ke|se)({$ANY})(.+)", ""), // 0
@@ -176,7 +169,7 @@ class pengakar
 				array('pe-', '-kan'),
 				array('di-', '-an'),
 				array('meng-', '-an'),
-				// array('ter-', '-an'),
+				array('ter-', '-an'),
 				array('ku-', '-an'),
 			),
 			'allomorphs' => array(
@@ -311,7 +304,7 @@ class pengakar
 		$raw = preg_split('/[^a-zA-Z0-9\-]/', $query, -1, PREG_SPLIT_NO_EMPTY);
 		foreach ($raw as $r)
 		{
-			// All digit
+			// Remove all digit "word" if necessary
 			if ($this->options['NO_DIGIT_ONLY'] && preg_match('/^\d+$/', $r))
 				continue;
 			$key = strtolower($r);
@@ -358,8 +351,16 @@ class pengakar
 		}
 
 		// Process: Find suffixes, pronoun prefix, and other prefix (3 times, Asian)
-		foreach ($this->rules['affixes'] as $rule)
-			$this->add_root($roots, $rule);
+		foreach ($this->rules['affixes'] as $group)
+		{
+			$is_suffix = $group[0];
+			$affixes = $group[1];
+			foreach ($affixes as $affix)
+			{
+				$pattern = $is_suffix ? "(.+)({$affix})" : "({$affix})(.+)";
+				$this->add_root($roots, array($is_suffix, $pattern, ''));
+			}
+		}
 		for ($i = 0; $i < 3; $i++)
 			foreach ($this->rules['prefixes'] as $rule)
 				$this->add_root($roots, $rule);
@@ -373,7 +374,10 @@ class pengakar
 				unset($roots[$lemma]);
 				continue;
 			}
-			// Check if allowed: Can be allomorph
+			// Escape if we don't have to check valid confix pairs
+			if (!$this->options['STRICT_CONFIX'])
+				continue;
+			// Check confix pairs
 			$affixes = $attrib['affixes'];
 			foreach ($this->rules['disallowed_confixes'] as $pair)
 			{
