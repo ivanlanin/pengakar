@@ -175,9 +175,8 @@ class pengakar
 			'allomorphs' => array(
 				'be' => array('be-', 'ber-', 'bel-'),
 				'te' => array('te-', 'ter-', 'tel-'),
-				'pe' => array('pe-', 'per-', 'pel-'),
+				'pe' => array('pe-', 'per-', 'pel-', 'pen-', 'pem-', 'peng-', 'peny-', 'penge-'),
 				'me' => array('me-', 'men-', 'mem-', 'meng-', 'meny-', 'menge-'),
-				'pe' => array('pe-', 'pen-', 'pem-', 'peng-', 'peny-', 'penge-'),
 			),
 		);
 
