@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Pengakar" default="build">
+    <target name="build" depends="lint,phpcpd,phpcbf,phpcs" />
+
+    <target name="lint" description="PHP Lint">
+        <phplint haltonfailure="true">
+            <fileset refid="appcode" />
+        </phplint>
+    </target>
+
+    <target name="phpcpd" description="PHP Copy-Paste Detector">
+        <exec command="php ../doktika/phar/phpcpd.phar app > docs/qa/cpd.txt" logoutput="true" />
+    </target>
+
+    <target name="phpcbf" description="PHP Code Beautifier and Fixer">
+        <exec command="php ../doktika/phar/phpcbf.phar --standard=PSR2 --no-patch index.php src > docs/qa/cbf.txt" logoutput="true" />
+    </target>
+
+    <target name="phpcs" description="PHP CodeSniffer">
+        <exec command="php ../doktika/phar/phpcs.phar --standard=PSR2 -n index.php src" logoutput="true" />
+    </target>
+
+    <fileset dir="app" id="appcode">
+        <include name="*.php" />
+        <include name="**/*.php" />
+    </fileset>
+</project>

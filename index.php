@@ -20,18 +20,19 @@ error_reporting(E_ALL & ~E_NOTICE);
 require_once 'src/pengakar.php';
 
 // Parameters
-$pengakar = new Pengakar();
+$pengakar = new \Kateglo\Pengakar();
 $url = $_GET['url'] ? $_GET['url'] : $_POST['url'];
-if ($url)
+if ($url) {
     $q = $pengakar->getContent($url);
-else
+} else {
     $q = stripslashes($_GET['q'] ? $_GET['q'] : $_POST['q']); // Suhosin?
+}
 // Process API
-if (isset($_GET['api']))
+if (isset($_GET['api'])) {
     die($pengakar->getApi($q));
+}
 // Process HTML
-if ($q)
-{
+if ($q) {
     $result .= '<h3>Daftar kata</h3>';
     $result .= $pengakar->getHtml($q);
 }
